@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards , Req , Query} from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserData } from './user.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { query } from 'express';
 
 @Controller('user')
 export class userController {
@@ -27,10 +28,21 @@ export class userController {
       return 'invalid input';
     }
   }
+  @Get("42")
+  async Get_user() {
+    const Token : string  = await this.userService.getAccessToken();
+    return this.userService.get_intra_user(Token);
+  }
+
+  @Get("intra")
+  Intra(@Query() queryParams: any){
+    return queryParams;
+  }
 
   @Get('test')
   @UseGuards(AuthGuard('jwt'))
   test() {
     return 'hey there';
   }
+  
 }

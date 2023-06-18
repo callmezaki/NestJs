@@ -1,48 +1,65 @@
-import { Body, Controller, Get, Post, UseGuards , Req , Query} from '@nestjs/common';
-import { UserService } from './user.service';
-import { UserData } from './user.dto';
-import { AuthGuard } from '@nestjs/passport';
-import { query } from 'express';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  UseGuards,
+  Req,
+  Res,
+} from "@nestjs/common";
+import { UserService } from "./user.service";
+import { UserData } from "./user.dto";
+import { AuthGuard } from "@nestjs/passport";
 
-@Controller('user')
+@Controller("user")
 export class userController {
   constructor(private userService: UserService) {}
 
-  @Get('all')
+  @Get("all")
   getUsers() {
     return this.userService.getUsers();
   }
-  @Post('signup')
+  @Post("signup")
   signup(@Body() userData: UserData) {
     if (userData.email && userData.password)
       return this.userService.addUser(userData);
     else {
-      return 'invalid input';
+      return "invalid input";
     }
   }
-  @Post('login')
+
+  @Post("login")
   signin(@Body() userData: UserData) {
     if (userData.email && userData.password)
       return this.userService.login(userData);
     else {
-      return 'invalid input';
+      return "invalid input";
     }
-  }
-  @Get("42")
-  async Get_user() {
-    const Token : string  = await this.userService.getAccessToken();
-    return this.userService.get_intra_user(Token);
   }
 
   @Get("intra")
-  Intra(@Query() queryParams: any){
-    return queryParams;
+  @UseGuards(AuthGuard("42"))
+  Callback(@Req() req) {
+    return this.userService.intraJWT(req.user.email);
   }
 
-  @Get('test')
-  @UseGuards(AuthGuard('jwt'))
-  test() {
-    return 'hey there';
+  @Get("profile")
+  @UseGuards(AuthGuard("jwt"))
+  profile(@Req() req) {
+    return this.userService.getProfile(req.user.id)
   }
-  
+
+
+  @Get("42")
+  @UseGuards(AuthGuard("42"))
+  async fortyTwoCallback(@Req() req: Request): Promise<void> {
+    const user = req.body;
+    console.log("here");
+  }
+
+  @Get("test")
+  @UseGuards(AuthGuard("jwt"))
+  test() {
+    return "hey there";
+  }
 }

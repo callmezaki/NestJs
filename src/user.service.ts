@@ -5,6 +5,7 @@ import { UserData } from "./user.dto";
 import * as bcrypt from "bcrypt";
 import * as jwt from "jsonwebtoken";
 import axios from "axios";
+import passport from "passport";
 
 @Injectable()
 export class UserService {
@@ -24,9 +25,17 @@ export class UserService {
       const hash = await bcrypt.hash(userData.password, salt);
       await this.prisma.user.create({
         data: {
-          name: userData.name,
+          username: userData.username,
           email: userData.email,
           password: hash,
+          profile : {
+            create : {
+              firstName : userData.firstName,
+              lastName : userData.lastName,
+              email : userData.email,
+              username : userData.username,
+            }
+        }
         },
       });
       return "User created";
@@ -52,6 +61,15 @@ export class UserService {
       return "invalid creds";
     }
   }
+
+  async intraJWT(email : string){
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    return this.generateToken(user.id)
+  }
+
   async validateUser(data: any) {
     const { userId } = data;
 
@@ -64,39 +82,40 @@ export class UserService {
     return user ? user : null;
   }
 
-  async getAccessToken()  {
-    const TOKEN_ENDPOINT = "https://api.intra.42.fr/oauth/token";
-
-    try {
-      const response = await axios.post(TOKEN_ENDPOINT, {
-        client_id: process.env.UID,
-        client_secret: process.env.SECRET,
-        grant_type: "client_credentials",
-      });
-
-      const { access_token } = response.data;
-      console.log("Access Token:", access_token);
-      return access_token;
-    } catch (error) {
-      console.error("Error retrieving access token:", error.response.data);
-    }
+  async getProfile( id : string) {
+    const profile =  await this.prisma.profile.findUnique({
+      where: {
+        userId : +id,
+      }
+    })
+    const {userId , ...ret} = profile;
+    return ret;
   }
 
-  async get_intra_user(Token : string) {
-    const apiUrl = "https://api.intra.42.fr/v2/users/zait-sli"
+  async validateIntraUser(user : any) : Promise<any> {
     
-    const response = await axios.get(apiUrl, {
-      headers: {
-        Authorization: `Bearer ${Token}`,
-      },
-    }) .then((response) => {
-      console.log(response.data);
-      return response.data;
-    })
-    .catch((error) => {
-      // Handle any errors
-      console.error(error);
-      return "did not work"
-    })
+    const exist = await this.prisma.user.findUnique({
+      where: { email: user.email },
+    });
+    if (!exist)
+    {
+      await this.prisma.user.create({
+        data: {
+          username: user.username,
+          email: user.email,
+          id42: +user.fortyTwoId,
+          password: "hhhh",
+          profile : {
+              create : {
+                firstName : user.firstName,
+                lastName : user.lastName,
+                email : user.email,
+                username : user.username,
+              }
+          }
+        },
+      });
+    }
+    return user;
   }
 }
